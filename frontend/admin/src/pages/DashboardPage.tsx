@@ -88,8 +88,12 @@ function timeAgo(ts: string) {
   return `${h}h ago`
 }
 
-function getDuration(start: string, end: string) {
-  const ms = new Date(end).getTime() - new Date(start).getTime()
+function getDuration(events: { created_at: string }[]) {
+  if (!events || events.length < 2) return '—'
+  const first = new Date(events[0].created_at).getTime()
+  const last = new Date(events[events.length - 1].created_at).getTime()
+  const ms = last - first
+  if (ms < 0) return '—'
   const s = Math.floor(ms / 1000)
   if (s < 60) return `${s}s`
   const m = Math.floor(s / 60)
@@ -369,7 +373,7 @@ export default function DashboardPage() {
                   { label: 'Progress', value: `${selected.progress}%` },
                   { label: 'Location', value: [selected.ip_city, selected.ip_country].filter(Boolean).join(', ') || '—' },
                   { label: 'ISP', value: selected.ip_org || '—' },
-                  { label: 'Duration', value: getDuration(selected.started_at, selected.last_active_at) },
+                  { label: 'Duration', value: getDuration(selected.events) },
                   { label: 'Started', value: formatTime(selected.started_at) },
                   { label: 'Last Active', value: formatTime(selected.last_active_at) },
                 ].map((item) => (
