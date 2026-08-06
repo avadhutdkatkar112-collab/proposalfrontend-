@@ -99,6 +99,15 @@ router.post('/', async (req, res: Response) => {
       )
     }
 
+    // If response event, update session response
+    if (type === 'response' && label) {
+      const responseText = label.replace('Response Submitted: ', '')
+      await query(
+        `UPDATE sessions SET response = $1, responded_at = NOW() WHERE id = $2`,
+        [responseText, sessionId]
+      )
+    }
+
     // Broadcast to admin dashboard
     broadcast({
       type: type === 'heartbeat' ? 'heartbeat' : 'new_event',
