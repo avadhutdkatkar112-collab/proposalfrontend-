@@ -69,7 +69,7 @@ function getVisibleSection(): string {
   return best
 }
 
-export function useSessionReplay() {
+export function useSessionReplay(enabled: boolean) {
   const buffer = useRef<ReplayEvent[]>([])
   const startTime = useRef(Date.now())
   const lastMouse = useRef(0)
@@ -101,7 +101,7 @@ export function useSessionReplay() {
         buffer.current = [...events, ...buffer.current]
         setTimeout(() => flush(false), 3000)
       }
-    } catch (e) {
+    } catch {
       if (retry) {
         buffer.current = [...events, ...buffer.current]
         setTimeout(() => flush(false), 3000)
@@ -110,6 +110,7 @@ export function useSessionReplay() {
   }, [])
 
   useEffect(() => {
+    if (!enabled) return
     startTime.current = Date.now()
     refreshRectCache()
 
@@ -197,5 +198,5 @@ export function useSessionReplay() {
       if (flushTimer.current) clearInterval(flushTimer.current)
       flush(false)
     }
-  }, [addEvent, flush])
+  }, [addEvent, flush, enabled])
 }

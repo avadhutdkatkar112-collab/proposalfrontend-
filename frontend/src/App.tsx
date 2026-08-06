@@ -41,7 +41,7 @@ function App() {
   const [showDashboard, setShowDashboard] = useState(false)
 
   const { session, trackSection, trackResponse, resetSession } = useSessionTracker()
-  if (!isReplayMode) useSessionReplay()
+  useSessionReplay(!isReplayMode)
 
   const handleLoad = useCallback(() => setLoaded(true), [])
 

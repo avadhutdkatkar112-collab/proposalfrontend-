@@ -382,6 +382,7 @@ export default function ReplayView({ visitorId, onClose }: Props) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         @keyframes clickRing { 0%{transform:scale(0.2);opacity:0.9} 100%{transform:scale(1.8);opacity:0} }
         @keyframes replayKeyUp { 0%{opacity:0.9;transform:translateY(0)} 100%{opacity:0;transform:translateY(-12px)} }
         .replay-range::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:#E8A0BF; cursor:pointer; box-shadow:0 0 6px rgba(232,160,191,0.5); }

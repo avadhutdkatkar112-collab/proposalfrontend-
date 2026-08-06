@@ -107,10 +107,15 @@ export default function DashboardPage() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [replayVisitorId, setReplayVisitorId] = useState<string | null>(null)
   const selectedRef = useRef<string | null>(null)
+  const sessionsRef = useRef<Session[]>([])
 
   useEffect(() => {
     selectedRef.current = selected?.visitor_id || null
   }, [selected?.visitor_id])
+
+  useEffect(() => {
+    sessionsRef.current = sessions
+  }, [sessions])
 
   useEffect(() => {
     let active = true
@@ -131,6 +136,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const sse = connectSSE({
       onSessionUpdated: (data) => {
+        const exists = sessionsRef.current.some((s) => s.visitor_id === data.visitorId)
         setSessions((prev) => {
           const idx = prev.findIndex((s) => s.visitor_id === data.visitorId)
           if (idx >= 0) {
@@ -138,9 +144,9 @@ export default function DashboardPage() {
             updated[idx] = { ...updated[idx], ...data.session }
             return updated
           }
-          setRefreshKey((k) => k + 1)
-          return prev
+          return [...prev, data.session]
         })
+        if (!exists) setRefreshKey((k) => k + 1)
 
         if (selectedRef.current === data.visitorId) {
           setSelected((prev) => prev ? { ...prev, ...data.session } : prev)
