@@ -34,7 +34,7 @@ function PolaroidCard({ photo, index }: { photo: (typeof photos)[0]; index: numb
           boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
         }}
       >
-        <div className="aspect-square flex items-center justify-center text-3xl md:text-4xl relative overflow-hidden">
+        <div className="aspect-[4/3] flex items-center justify-center text-3xl md:text-4xl relative overflow-hidden">
           <div
             className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
             style={{
@@ -77,7 +77,7 @@ function PolaroidCard({ photo, index }: { photo: (typeof photos)[0]; index: numb
           </div>
         </div>
 
-        <div className="px-3 py-2.5 text-center">
+        <div className="px-2 py-1.5 text-center">
           <p
             className="text-white/60 text-xs tracking-wider"
             style={{ fontFamily: 'var(--font-handwriting)' }}
@@ -105,7 +105,7 @@ export default function GallerySection() {
   return (
     <section
       ref={ref}
-      className="relative min-h-screen flex flex-col justify-center py-12 px-4"
+      className="relative min-h-screen flex flex-col justify-center py-8 px-4"
       style={{
         background:
           'linear-gradient(180deg, #0d0818 0%, #1a1030 50%, #0d0818 100%)',
@@ -130,7 +130,7 @@ export default function GallerySection() {
           Every little memory with you
         </motion.p>
 
-        <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-3 gap-2 md:gap-3">
           {photos.map((photo, i) => (
             <PolaroidCard key={i} photo={photo} index={i} />
           ))}

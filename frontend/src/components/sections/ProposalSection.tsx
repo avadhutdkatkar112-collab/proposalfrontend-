@@ -28,12 +28,20 @@ function GlowingHeart() {
 export default function ProposalSection({ onSelect }: { onSelect: (choice: string) => void }) {
   const { ref, isInView } = useInView(0.2)
   const [hovered, setHovered] = useState<string | null>(null)
+  const [customAnswer, setCustomAnswer] = useState('')
+  const [showInput, setShowInput] = useState(false)
 
   const choices = [
     { emoji: '❤️', label: "I'd Love To", color: '#E8A0BF' },
     { emoji: '🌸', label: "Let's Get To Know Each Other First", color: '#C8A2C8' },
     { emoji: '🤍', label: "I Don't Feel The Same, But Thank You", color: '#9CA3AF' },
   ]
+
+  const handleCustomSubmit = () => {
+    if (customAnswer.trim()) {
+      onSelect(customAnswer.trim())
+    }
+  }
 
   return (
     <section
@@ -119,6 +127,60 @@ export default function ProposalSection({ onSelect }: { onSelect: (choice: strin
                   )}
                 </motion.button>
               ))}
+            </motion.div>
+
+            {/* Type your own answer */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2 }}
+              className="mt-8"
+            >
+              {!showInput ? (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowInput(true)}
+                  className="text-white/40 text-sm cursor-pointer transition-colors hover:text-white/60"
+                  style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}
+                >
+                  Or type your own answer...
+                </motion.button>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center gap-3"
+                >
+                  <input
+                    type="text"
+                    value={customAnswer}
+                    onChange={(e) => setCustomAnswer(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCustomSubmit()}
+                    placeholder="Type your answer here..."
+                    autoFocus
+                    className="w-full max-w-sm px-5 py-3 rounded-full text-white/80 text-sm text-center outline-none transition-all duration-300 focus:ring-2 focus:ring-[#E8A0BF]/30"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      fontFamily: 'var(--font-serif)',
+                    }}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleCustomSubmit}
+                    disabled={!customAnswer.trim()}
+                    className="px-6 py-2 rounded-full text-white/70 text-sm cursor-pointer transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(232,160,191,0.2), rgba(212,175,55,0.15))',
+                      border: '1px solid rgba(232,160,191,0.3)',
+                    }}
+                  >
+                    Send 💕
+                  </motion.button>
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
         )}
