@@ -54,9 +54,9 @@ router.post('/', async (req, res: Response) => {
     const ip = getClientIp(req)
     const userAgent = req.headers['user-agent'] || ''
 
-    // Geo lookup for new sessions or periodically
+    // Geo lookup for new sessions
     let geo: GeoData = {}
-    const existingSession = await query('SELECT id, ip_address FROM sessions WHERE visitor_id = $1', [visitorId])
+    const existingSession = await query('SELECT id, ip_address, ip_city, ip_region, ip_country, ip_org FROM sessions WHERE visitor_id = $1', [visitorId])
 
     if (existingSession.rows.length === 0) {
       // New session — do geo lookup
@@ -68,18 +68,18 @@ router.post('/', async (req, res: Response) => {
       await query(
         `INSERT INTO sessions (visitor_id, is_online, current_section, progress, ip_address, ip_city, ip_region, ip_country, ip_org, user_agent, last_active_at)
          VALUES ($1, true, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
-        [visitorId, section || null, progress || 0, ip, geo.city || null, geo.regionName || null, geo.country || null, geo.org || null, userAgent]
+        [visitorId, section || null, progress ?? 0, ip, geo.city || null, geo.regionName || null, geo.country || null, geo.org || null, userAgent]
       )
     } else {
       await query(
         `UPDATE sessions SET
           is_online = true,
           current_section = COALESCE($1, current_section),
-          progress = COALESCE($2, progress),
+          progress = GREATEST(COALESCE($2, progress), progress),
           last_active_at = NOW(),
           user_agent = COALESCE($3, user_agent)
          WHERE visitor_id = $4`,
-        [section || null, progress || 0, userAgent, visitorId]
+        [section || null, progress ?? null, userAgent, visitorId]
       )
     }
 
@@ -113,6 +113,7 @@ router.post('/', async (req, res: Response) => {
     }
 
     // Broadcast to admin dashboard
+    const existingGeo = existingSession.rows[0]
     broadcast({
       type: type === 'heartbeat' ? 'heartbeat' : 'new_event',
       data: {
@@ -123,8 +124,8 @@ router.post('/', async (req, res: Response) => {
         currentSection: section,
         progress,
         ip,
-        city: geo.city,
-        country: geo.country,
+        city: geo.city || existingGeo?.ip_city,
+        country: geo.country || existingGeo?.ip_country,
       },
     })
 

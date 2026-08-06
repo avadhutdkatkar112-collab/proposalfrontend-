@@ -19,8 +19,20 @@ const PORT = process.env.PORT || 3001
 initWebSocket(server)
 
 // Middleware
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
+  'https://proposalfrontend.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]
+
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(null, true)
+    }
+  },
   credentials: true,
 }))
 app.use(express.json())

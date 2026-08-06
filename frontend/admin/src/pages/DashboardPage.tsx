@@ -100,7 +100,7 @@ export default function DashboardPage() {
   const [selected, setSelected] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
-  const wsRef = useRef<WebSocket | null>(null)
+  const wsCleanupRef = useRef<(() => void) | null>(null)
   const selectedRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -121,6 +121,17 @@ export default function DashboardPage() {
     load()
     return () => { active = false }
   }, [refreshKey])
+
+  // Polling fallback — refresh sessions every 5s in case WebSocket fails
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const data = await getSessions()
+        setSessions(data)
+      } catch {}
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     const ws = connectWebSocket((msg: any) => {
@@ -183,7 +194,7 @@ export default function DashboardPage() {
       }
     })
 
-    wsRef.current = ws
+    wsCleanupRef.current = ws.close
     return () => ws.close()
   }, [])
 

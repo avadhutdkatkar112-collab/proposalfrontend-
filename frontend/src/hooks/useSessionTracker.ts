@@ -200,10 +200,8 @@ export function useSessionTracker() {
   // Mark offline on page unload
   useEffect(() => {
     const handleUnload = () => {
-      navigator.sendBeacon(
-        `${API_URL}/api/events/offline`,
-        JSON.stringify({ visitorId: visitorId.current })
-      )
+      const blob = new Blob([JSON.stringify({ visitorId: visitorId.current })], { type: 'application/json' })
+      navigator.sendBeacon(`${API_URL}/api/events/offline`, blob)
     }
     window.addEventListener('beforeunload', handleUnload)
     return () => window.removeEventListener('beforeunload', handleUnload)
