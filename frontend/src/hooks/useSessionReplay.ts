@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
+import { getVisitorId } from '../lib/visitorId'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const FLUSH_INTERVAL = 2000
@@ -8,10 +9,6 @@ interface ReplayEvent {
   type: 'mouse' | 'click' | 'key' | 'scroll' | 'section' | 'hash'
   data: Record<string, unknown>
   ts: number
-}
-
-function getVisitorId(): string {
-  return localStorage.getItem('proposal_visitor_id') || 'unknown'
 }
 
 const SECTION_IDS = [

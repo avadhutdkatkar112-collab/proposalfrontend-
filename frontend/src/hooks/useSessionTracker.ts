@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getVisitorId } from '../lib/visitorId'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -18,17 +19,6 @@ export interface SessionData {
   respondedAt: number | null
   currentSection: string
   progress: number
-}
-
-const STORAGE_KEY = 'proposal_visitor_id'
-
-function getVisitorId(): string {
-  let id = localStorage.getItem(STORAGE_KEY)
-  if (!id) {
-    id = Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
-    localStorage.setItem(STORAGE_KEY, id)
-  }
-  return id
 }
 
 const sectionLabels: Record<string, string> = {
@@ -158,7 +148,6 @@ export function useSessionTracker() {
 
     // Generate new visitor ID
     const newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
-    localStorage.setItem(STORAGE_KEY, newId)
     visitorId.current = newId
 
     setSession({
