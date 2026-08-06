@@ -1,6 +1,5 @@
 import express from 'express'
 import cors from 'cors'
-import path from 'path'
 import dotenv from 'dotenv'
 import { pool } from './db'
 import { initWebSocket } from './ws'
@@ -34,18 +33,16 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// Serve Admin Dashboard at /admin
-const adminDist = path.join(__dirname, '..', 'public', 'admin')
-app.use('/admin', express.static(adminDist))
-app.use('/admin', (_req, res) => {
-  res.sendFile(path.join(adminDist, 'index.html'))
-})
-
-// Serve Proposal Site at / (catch-all, must be last)
-const proposalDist = path.join(__dirname, '..', 'public', 'proposal')
-app.use(express.static(proposalDist))
-app.use((_req, res) => {
-  res.sendFile(path.join(proposalDist, 'index.html'))
+app.get('/', (_req, res) => {
+  res.json({ 
+    name: 'Proposal Backend API',
+    endpoints: {
+      health: '/api/health',
+      events: '/api/events',
+      sessions: '/api/sessions',
+      auth: '/api/auth'
+    }
+  })
 })
 
 // Start server

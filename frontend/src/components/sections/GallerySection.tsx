@@ -34,7 +34,7 @@ function PolaroidCard({ photo, index }: { photo: (typeof photos)[0]; index: numb
           boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
         }}
       >
-        <div className="aspect-square flex items-center justify-center text-5xl md:text-6xl relative overflow-hidden">
+        <div className="aspect-square flex items-center justify-center text-3xl md:text-4xl relative overflow-hidden">
           <div
             className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
             style={{
@@ -105,7 +105,7 @@ export default function GallerySection() {
   return (
     <section
       ref={ref}
-      className="relative min-h-screen flex flex-col justify-center py-20 px-6"
+      className="relative min-h-screen flex flex-col justify-center py-12 px-4"
       style={{
         background:
           'linear-gradient(180deg, #0d0818 0%, #1a1030 50%, #0d0818 100%)',
@@ -116,7 +116,7 @@ export default function GallerySection() {
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center text-2xl md:text-3xl text-white/80 mb-2"
+          className="text-center text-2xl md:text-3xl text-white/80 mb-1"
           style={{ fontFamily: 'var(--font-serif)' }}
         >
           Moments I Cherish
@@ -125,12 +125,12 @@ export default function GallerySection() {
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-center text-white/40 text-sm mb-10 tracking-wider"
+          className="text-center text-white/40 text-sm mb-6 tracking-wider"
         >
           Every little memory with you
         </motion.p>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-4">
           {photos.map((photo, i) => (
             <PolaroidCard key={i} photo={photo} index={i} />
           ))}
