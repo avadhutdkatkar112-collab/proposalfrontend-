@@ -114,13 +114,19 @@ function App() {
 
   // Replay mode: listen for scroll commands from admin iframe
   useEffect(() => {
+    if (!isReplayMode) return
+
+    // Override smooth scrolling with !important to beat @layer base CSS
+    const style = document.createElement('style')
+    style.id = 'replay-no-smooth'
+    style.textContent = 'html { scroll-behavior: auto !important; }'
+    document.head.appendChild(style)
+
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === 'replay-scroll' && typeof e.data.scrollPct === 'number') {
         const maxScroll = document.documentElement.scrollHeight - window.innerHeight
         if (maxScroll > 0) {
-          document.documentElement.style.scrollBehavior = 'auto'
           window.scrollTo(0, e.data.scrollPct * maxScroll)
-          document.documentElement.style.scrollBehavior = ''
         }
       }
       if (e.data?.type === 'replay-hash' && typeof e.data.hash === 'string') {
@@ -129,8 +135,11 @@ function App() {
       }
     }
     window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [])
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      style.remove()
+    }
+  }, [isReplayMode])
 
   // Replay mode: signal parent when fully rendered and ready for scroll commands
   useEffect(() => {
