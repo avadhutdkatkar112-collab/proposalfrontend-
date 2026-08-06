@@ -71,6 +71,7 @@ export async function resetSession(visitorId: string) {
 export function connectWebSocket(onMessage: (data: any) => void) {
   const wsUrl = WS_URL.endsWith('/ws') ? WS_URL : `${WS_URL}/ws`
   const ws = new WebSocket(wsUrl)
+  let closed = false
 
   ws.onmessage = (event) => {
     try {
@@ -80,12 +81,19 @@ export function connectWebSocket(onMessage: (data: any) => void) {
   }
 
   ws.onclose = () => {
-    // Reconnect after 3s
-    setTimeout(() => connectWebSocket(onMessage), 3000)
+    if (!closed) {
+      setTimeout(() => connectWebSocket(onMessage), 3000)
+    }
   }
 
   ws.onerror = () => {
     ws.close()
+  }
+
+  const origClose = ws.close.bind(ws)
+  ws.close = () => {
+    closed = true
+    origClose()
   }
 
   return ws

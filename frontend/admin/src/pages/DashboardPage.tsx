@@ -101,6 +101,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const wsRef = useRef<WebSocket | null>(null)
+  const selectedRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    selectedRef.current = selected?.visitor_id || null
+  }, [selected?.visitor_id])
 
   useEffect(() => {
     let active = true
@@ -137,7 +142,7 @@ export default function DashboardPage() {
           return prev
         })
 
-        if (selected?.visitor_id === msg.data.visitorId && msg.data.event) {
+        if (selectedRef.current === msg.data.visitorId && msg.data.event) {
           setSelected((prev) => prev ? {
             ...prev,
             current_section: msg.data.currentSection || prev.current_section,
@@ -153,6 +158,10 @@ export default function DashboardPage() {
             }],
           } : prev)
         }
+
+        if (msg.data.event?.type === 'response') {
+          setRefreshKey((k) => k + 1)
+        }
       }
 
       if (msg.type === 'visitor_offline') {
@@ -163,20 +172,20 @@ export default function DashboardPage() {
               : s
           )
         )
-        if (selected?.visitor_id === msg.data.visitorId) {
+        if (selectedRef.current === msg.data.visitorId) {
           setSelected((prev) => prev ? { ...prev, is_online: false } : prev)
         }
       }
 
       if (msg.type === 'session_reset') {
         setRefreshKey((k) => k + 1)
-        if (selected?.visitor_id === msg.data.visitorId) setSelected(null)
+        if (selectedRef.current === msg.data.visitorId) setSelected(null)
       }
     })
 
     wsRef.current = ws
     return () => ws.close()
-  }, [selected?.visitor_id])
+  }, [])
 
   const handleViewDetail = async (visitorId: string) => {
     try {
