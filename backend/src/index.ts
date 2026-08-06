@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import path from 'path'
 import dotenv from 'dotenv'
 import { pool } from './db'
 import { initWebSocket } from './ws'
@@ -40,9 +41,17 @@ app.get('/', (_req, res) => {
       health: '/api/health',
       events: '/api/events',
       sessions: '/api/sessions',
-      auth: '/api/auth'
+      auth: '/api/auth',
+      admin: '/admin'
     }
   })
+})
+
+// Serve Admin Dashboard at /admin
+const adminDist = path.join(__dirname, '..', 'public', 'admin')
+app.use('/admin', express.static(adminDist))
+app.use('/admin', (_req, res) => {
+  res.sendFile(path.join(adminDist, 'index.html'))
 })
 
 // Start server
