@@ -30,6 +30,7 @@ export default function ProposalSection({ onSelect }: { onSelect: (choice: strin
   const [hovered, setHovered] = useState<string | null>(null)
   const [customAnswer, setCustomAnswer] = useState('')
   const [showInput, setShowInput] = useState(false)
+  const [sent, setSent] = useState(false)
 
   const choices = [
     { emoji: '❤️', label: "I'd Love To", color: '#E8A0BF' },
@@ -40,6 +41,7 @@ export default function ProposalSection({ onSelect }: { onSelect: (choice: strin
   const handleCustomSubmit = () => {
     if (customAnswer.trim()) {
       onSelect(customAnswer.trim())
+      setSent(true)
     }
   }
 
@@ -167,17 +169,19 @@ export default function ProposalSection({ onSelect }: { onSelect: (choice: strin
                     }}
                   />
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: sent ? 1 : 1.05 }}
+                    whileTap={{ scale: sent ? 1 : 0.95 }}
                     onClick={handleCustomSubmit}
-                    disabled={!customAnswer.trim()}
+                    disabled={!customAnswer.trim() || sent}
                     className="px-6 py-2 rounded-full text-white/70 text-sm cursor-pointer transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(232,160,191,0.2), rgba(212,175,55,0.15))',
+                      background: sent
+                        ? 'linear-gradient(135deg, rgba(232,160,191,0.35), rgba(212,175,55,0.3))'
+                        : 'linear-gradient(135deg, rgba(232,160,191,0.2), rgba(212,175,55,0.15))',
                       border: '1px solid rgba(232,160,191,0.3)',
                     }}
                   >
-                    Send
+                    {sent ? 'Sent ✨' : 'Send'}
                   </motion.button>
                 </motion.div>
               )}

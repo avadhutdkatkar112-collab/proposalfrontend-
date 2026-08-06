@@ -52,6 +52,9 @@ function App() {
     (c: string) => {
       setChoice(c)
       trackResponse(c)
+      setTimeout(() => {
+        document.getElementById('sec-ending')?.scrollIntoView({ behavior: 'smooth' })
+      }, 400)
     },
     [trackResponse]
   )

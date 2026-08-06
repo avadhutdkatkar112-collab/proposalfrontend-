@@ -69,7 +69,8 @@ export async function resetSession(visitorId: string) {
 }
 
 export function connectWebSocket(onMessage: (data: any) => void) {
-  const ws = new WebSocket(WS_URL)
+  const wsUrl = WS_URL.endsWith('/ws') ? WS_URL : `${WS_URL}/ws`
+  const ws = new WebSocket(wsUrl)
 
   ws.onmessage = (event) => {
     try {
