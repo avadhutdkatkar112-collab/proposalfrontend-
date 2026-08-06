@@ -110,6 +110,24 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [showDashboard])
 
+  // Replay mode: listen for scroll commands from admin iframe
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'replay-scroll' && typeof e.data.scrollPct === 'number') {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight
+        if (maxScroll > 0) {
+          window.scrollTo(0, e.data.scrollPct * maxScroll)
+        }
+      }
+      if (e.data?.type === 'replay-hash' && typeof e.data.hash === 'string') {
+        const el = document.getElementById(e.data.hash)
+        if (el) el.scrollIntoView({ behavior: 'instant' })
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
   const scrollTo = useCallback(
     (index: number) => {
       const ids = choice ? sectionIds : sectionIds.slice(0, -1)

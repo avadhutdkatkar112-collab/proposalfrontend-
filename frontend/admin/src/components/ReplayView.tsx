@@ -13,51 +13,26 @@ interface Props {
   onClose: () => void
 }
 
-const SECTIONS = [
-  { id: 'sec-landing', label: 'Home', icon: '🏠' },
-  { id: 'sec-timeline', label: 'Messages', icon: '💌' },
-  { id: 'sec-reveal', label: 'Reveal', icon: '💡' },
-  { id: 'sec-gallery', label: 'Gallery', icon: '📸' },
-  { id: 'sec-truth', label: 'Truth', icon: '💛' },
-  { id: 'sec-cute', label: 'Cute', icon: '🧸' },
-  { id: 'sec-reasons', label: 'Reasons', icon: '✨' },
-  { id: 'sec-letter', label: 'Letter', icon: '📝' },
-  { id: 'sec-proposal', label: 'Proposal', icon: '❤️' },
-  { id: 'sec-ending', label: 'Response', icon: '🎉' },
-]
-
-const SECTION_COLORS: Record<string, string> = {
-  'sec-landing': '#E8A0BF',
-  'sec-timeline': '#D4AF37',
-  'sec-reveal': '#FFD700',
-  'sec-gallery': '#FF69B4',
-  'sec-truth': '#FFB6C1',
-  'sec-cute': '#DDA0DD',
-  'sec-reasons': '#F0E68C',
-  'sec-letter': '#87CEEB',
-  'sec-proposal': '#FF1493',
-  'sec-ending': '#FFD700',
-}
-
 export default function ReplayView({ visitorId, onClose }: Props) {
   const [events, setEvents] = useState<ReplayEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [speed, setSpeed] = useState(1)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [iframeReady, setIframeReady] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const animRef = useRef<number | null>(null)
   const startTimeRef = useRef(0)
   const pauseTimeRef = useRef(0)
-  const mouseRef = useRef({ x: 0, y: 0 })
-  const clicksRef = useRef<{ x: number; y: number; time: number }[]>([])
-  const scrollRef = useRef(0)
-  const keysRef = useRef<{ key: string; time: number }[]>([])
-  const sectionRef = useRef('sec-landing')
-  const scrollYRef = useRef(0)
-  const docHeightRef = useRef(1)
-  const viewHeightRef = useRef(1)
-  const mouseTrailRef = useRef<{ x: number; y: number; age: number }[]>([])
+  const cursorRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const stateRef = useRef({
+    scrollPct: 0,
+    mouseX: 0.5,
+    mouseY: 0.5,
+    clicks: [] as { x: number; y: number; el: HTMLDivElement }[],
+    keys: [] as { key: string; el: HTMLDivElement }[],
+  })
 
   useEffect(() => {
     async function load() {
@@ -72,259 +47,78 @@ export default function ReplayView({ visitorId, onClose }: Props) {
 
   const totalDuration = events.length > 0 ? events[events.length - 1].ts : 0
 
+  const scrollIframe = useCallback((pct: number) => {
+    const iframe = iframeRef.current
+    if (!iframe?.contentWindow) return
+    try {
+      iframe.contentWindow.postMessage({ type: 'replay-scroll', scrollPct: pct }, '*')
+    } catch {}
+  }, [])
+
   const processEventsUpTo = useCallback((time: number) => {
+    const state = stateRef.current
     for (const ev of events) {
       if (ev.ts > time) break
 
       if (ev.type === 'mouse') {
         const vw = (ev.data.vw as number) || 1920
         const vh = (ev.data.vh as number) || 1080
-        const canvas = canvasRef.current
-        if (canvas) {
-          const nx = (ev.data.x as number) / vw
-          const ny = (ev.data.y as number) / vh
-          mouseTrailRef.current.push({ x: nx, y: ny, age: 0 })
-          if (mouseTrailRef.current.length > 40) mouseTrailRef.current.shift()
-          mouseRef.current = { x: nx * canvas.width, y: ny * canvas.height }
-        }
-        if (ev.data.section) sectionRef.current = ev.data.section as string
+        state.mouseX = (ev.data.x as number) / vw
+        state.mouseY = (ev.data.y as number) / vh
       }
 
       if (ev.type === 'click') {
         const vw = (ev.data.vw as number) || 1920
         const vh = (ev.data.vh as number) || 1080
-        const canvas = canvasRef.current
-        if (canvas) {
-          clicksRef.current.push({
-            x: ((ev.data.x as number) / vw) * canvas.width,
-            y: ((ev.data.y as number) / vh) * canvas.height,
-            time: performance.now(),
-          })
+        const x = (ev.data.x as number) / vw
+        const y = (ev.data.y as number) / vh
+
+        if (overlayRef.current) {
+          const ripple = document.createElement('div')
+          ripple.className = 'absolute pointer-events-none'
+          ripple.style.cssText = `
+            left: ${x * 100}%; top: ${y * 100}%;
+            transform: translate(-50%, -50%);
+          `
+          ripple.innerHTML = `
+            <div style="width:40px;height:40px;border-radius:50%;border:2px solid rgba(212,175,55,0.6);
+              animation: clickRipple 0.8s ease-out forwards;"></div>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+              <div style="width:6px;height:6px;border-radius:50%;background:rgba(212,175,55,0.8);
+                animation: clickFade 0.8s ease-out forwards;"></div>
+            </div>
+          `
+          overlayRef.current.appendChild(ripple)
+          setTimeout(() => ripple.remove(), 900)
         }
       }
 
       if (ev.type === 'scroll') {
-        scrollRef.current = (ev.data.scrollY as number) || 0
-        scrollYRef.current = (ev.data.scrollY as number) || 0
-        docHeightRef.current = (ev.data.docHeight as number) || 3000
-        viewHeightRef.current = (ev.data.viewHeight as number) || window.innerHeight
-        if (ev.data.section) sectionRef.current = ev.data.section as string
-      }
-
-      if (ev.type === 'section') {
-        sectionRef.current = (ev.data.section as string) || 'sec-landing'
+        state.scrollPct = (ev.data.scrollPct as number) || 0
       }
 
       if (ev.type === 'key') {
-        keysRef.current.push({
-          key: (ev.data.key as string) || '?',
-          time: performance.now(),
-        })
+        if (overlayRef.current) {
+          const k = ev.data.key as string
+          const badge = document.createElement('div')
+          badge.className = 'absolute pointer-events-none'
+          badge.style.cssText = `
+            left: 12px; bottom: 12px;
+            background: rgba(232,160,191,0.2); border: 1px solid rgba(232,160,191,0.3);
+            border-radius: 4px; padding: 2px 8px;
+            font-size: 11px; color: rgba(255,255,255,0.8); font-family: monospace;
+            animation: keyFade 1.5s ease-out forwards;
+          `
+          badge.textContent = k.length > 1 ? k : k
+          overlayRef.current.appendChild(badge)
+          setTimeout(() => badge.remove(), 1600)
+        }
       }
     }
   }, [events])
 
-  const drawFrame = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const w = canvas.width
-    const h = canvas.height
-    const now = performance.now()
-
-    ctx.fillStyle = '#0a0612'
-    ctx.fillRect(0, 0, w, h)
-
-    const currentSectionIdx = SECTIONS.findIndex((s) => s.id === sectionRef.current)
-    const totalSections = SECTIONS.length
-
-    // Section nav strip on left
-    const stripW = 40
-    const stripH = h - 40
-    const stripX = 10
-    const stripY = 20
-    const secH = stripH / totalSections
-
-    for (let i = 0; i < totalSections; i++) {
-      const sy = stripY + i * secH
-      const sec = SECTIONS[i]
-      const isCurrent = i === currentSectionIdx
-
-      ctx.fillStyle = isCurrent ? 'rgba(232,160,191,0.25)' : 'rgba(255,255,255,0.03)'
-      ctx.fillRect(stripX, sy + 1, stripW - 2, secH - 2)
-
-      if (isCurrent) {
-        ctx.fillStyle = SECTION_COLORS[sec.id] || '#E8A0BF'
-        ctx.fillRect(stripX, sy + 1, 3, secH - 2)
-      }
-
-      ctx.fillStyle = isCurrent ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)'
-      ctx.font = `${isCurrent ? '11' : '9'}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.fillText(sec.icon, stripX + stripW / 2, sy + secH / 2 + 3)
-    }
-
-    // Page content area
-    const pageX = stripW + 20
-    const pageW = w - pageX - 10
-    const pageH = h - 40
-
-    // Page background with section color tint
-    const sectionColor = SECTION_COLORS[sectionRef.current] || '#E8A0BF'
-    const gradient = ctx.createLinearGradient(pageX, 20, pageX + pageW, 20 + pageH)
-    gradient.addColorStop(0, 'rgba(13,8,24,0.95)')
-    gradient.addColorStop(0.5, `${sectionColor}08`)
-    gradient.addColorStop(1, 'rgba(13,8,24,0.95)')
-    ctx.fillStyle = gradient
-    ctx.fillRect(pageX, 20, pageW, pageH)
-
-    // Page border
-    ctx.strokeStyle = `${sectionColor}20`
-    ctx.lineWidth = 1
-    ctx.strokeRect(pageX, 20, pageW, pageH)
-
-    // Section name at top of page
-    const sec = SECTIONS[currentSectionIdx] || SECTIONS[0]
-    ctx.fillStyle = 'rgba(255,255,255,0.12)'
-    ctx.font = '20px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(sec.icon, pageX + pageW / 2, 60)
-
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'
-    ctx.font = '12px sans-serif'
-    ctx.fillText(sec.label, pageX + pageW / 2, 80)
-
-    // Scroll position as page indicator
-    const scrollPct = docHeightRef.current > viewHeightRef.current
-      ? scrollYRef.current / (docHeightRef.current - viewHeightRef.current)
-      : 0
-
-    const indicatorH = pageH - 80
-    const indicatorY = 90
-
-    // Scroll track
-    ctx.fillStyle = 'rgba(255,255,255,0.04)'
-    ctx.fillRect(pageX + pageW - 14, indicatorY, 4, indicatorH)
-
-    // Scroll thumb
-    const thumbH = Math.max(20, (viewHeightRef.current / docHeightRef.current) * indicatorH)
-    const thumbY = indicatorY + scrollPct * (indicatorH - thumbH)
-    ctx.fillStyle = `${sectionColor}60`
-    ctx.fillRect(pageX + pageW - 14, thumbY, 4, thumbH)
-
-    // Mouse trail
-    mouseTrailRef.current.forEach((pt) => {
-      pt.age += 0.02
-      const alpha = Math.max(0, 0.3 - pt.age * 0.3)
-      if (alpha <= 0) return
-      const px = pageX + pt.x * pageW
-      const py = 20 + pt.y * pageH
-      ctx.beginPath()
-      ctx.arc(px, py, 2, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(232,160,191,${alpha})`
-      ctx.fill()
-    })
-    mouseTrailRef.current = mouseTrailRef.current.filter((pt) => pt.age < 1)
-
-    // Mouse cursor
-    const mx = pageX + mouseRef.current.x * pageW
-    const my = 20 + mouseRef.current.y * pageH
-
-    ctx.beginPath()
-    ctx.arc(mx, my, 10, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(232,160,191,0.15)'
-    ctx.fill()
-
-    ctx.beginPath()
-    ctx.arc(mx, my, 5, 0, Math.PI * 2)
-    ctx.fillStyle = '#E8A0BF'
-    ctx.fill()
-
-    ctx.beginPath()
-    ctx.arc(mx, my, 2, 0, Math.PI * 2)
-    ctx.fillStyle = '#fff'
-    ctx.fill()
-
-    // Clicks
-    clicksRef.current = clicksRef.current.filter((c) => now - c.time < 1000)
-    clicksRef.current.forEach((c) => {
-      const age = (now - c.time) / 1000
-      const r = 12 + age * 30
-      const alpha = 0.7 * (1 - age)
-
-      ctx.beginPath()
-      ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
-      ctx.strokeStyle = `rgba(212,175,55,${alpha})`
-      ctx.lineWidth = 2
-      ctx.stroke()
-
-      ctx.beginPath()
-      ctx.arc(c.x, c.y, 3, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(212,175,55,${alpha})`
-      ctx.fill()
-    })
-
-    // Keyboard overlay
-    const recentKeys = keysRef.current.filter((k) => now - k.time < 2000)
-    if (recentKeys.length > 0) {
-      const kx = pageX + 15
-      const ky = pageH + 10
-
-      recentKeys.forEach((k, i) => {
-        const age = (now - k.time) / 2000
-        const alpha = 0.8 * (1 - age)
-        const x = kx + i * 28
-
-        ctx.fillStyle = `rgba(232,160,191,${alpha * 0.2})`
-        ctx.beginPath()
-        ctx.roundRect(x, ky - 12, 24, 18, 3)
-        ctx.fill()
-
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`
-        ctx.font = '10px monospace'
-        ctx.textAlign = 'center'
-        ctx.fillText(k.key.length > 1 ? k.key.slice(0, 3) : k.key, x + 12, ky)
-      })
-    }
-
-    // Bottom timeline
-    const barY = h - 14
-    const barX = stripW + 20
-    const barW = w - barX - 50
-
-    ctx.fillStyle = 'rgba(255,255,255,0.06)'
-    ctx.fillRect(barX, barY, barW, 3)
-
-    if (totalDuration > 0) {
-      const progress = (currentTime / totalDuration) * barW
-      const grad = ctx.createLinearGradient(barX, 0, barX + progress, 0)
-      grad.addColorStop(0, 'rgba(232,160,191,0.3)')
-      grad.addColorStop(1, 'rgba(212,175,55,0.5)')
-      ctx.fillStyle = grad
-      ctx.fillRect(barX, barY, progress, 3)
-    }
-
-    // Section change markers on timeline
-    let lastSec = ''
-    for (const ev of events) {
-      if (ev.type === 'section' && ev.data.section !== lastSec) {
-        lastSec = ev.data.section as string
-        const mx2 = barX + (ev.ts / totalDuration) * barW
-        ctx.fillStyle = 'rgba(255,255,255,0.15)'
-        ctx.fillRect(mx2 - 1, barY - 3, 2, 9)
-      }
-    }
-
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'
-    ctx.font = '9px monospace'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${sec.label}`, w - 10, barY - 2)
-  }, [currentTime, totalDuration, events])
-
   useEffect(() => {
-    if (!playing || events.length === 0) return
+    if (!playing || events.length === 0 || !iframeReady) return
 
     startTimeRef.current = performance.now() - pauseTimeRef.current
 
@@ -335,13 +129,18 @@ export default function ReplayView({ visitorId, onClose }: Props) {
         setPlaying(false)
         setCurrentTime(totalDuration)
         processEventsUpTo(totalDuration)
-        drawFrame()
+        scrollIframe(stateRef.current.scrollPct)
         return
       }
 
       setCurrentTime(elapsed)
       processEventsUpTo(elapsed)
-      drawFrame()
+      scrollIframe(stateRef.current.scrollPct)
+
+      if (cursorRef.current) {
+        cursorRef.current.style.left = `${stateRef.current.mouseX * 100}%`
+        cursorRef.current.style.top = `${stateRef.current.mouseY * 100}%`
+      }
 
       animRef.current = requestAnimationFrame(tick)
     }
@@ -351,23 +150,15 @@ export default function ReplayView({ visitorId, onClose }: Props) {
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current)
     }
-  }, [playing, speed, totalDuration, processEventsUpTo, drawFrame])
-
-  useEffect(() => {
-    if (!playing) drawFrame()
-  }, [drawFrame, playing])
+  }, [playing, speed, totalDuration, iframeReady, processEventsUpTo, scrollIframe])
 
   const handlePlay = () => {
     if (currentTime >= totalDuration) {
       setCurrentTime(0)
       pauseTimeRef.current = 0
-      mouseRef.current = { x: 0, y: 0 }
-      clicksRef.current = []
-      scrollRef.current = 0
-      scrollYRef.current = 0
-      keysRef.current = []
-      mouseTrailRef.current = []
-      sectionRef.current = 'sec-landing'
+      stateRef.current = { scrollPct: 0, mouseX: 0.5, mouseY: 0.5, clicks: [], keys: [] }
+      scrollIframe(0)
+      if (overlayRef.current) overlayRef.current.innerHTML = ''
     }
     setPlaying(true)
   }
@@ -377,34 +168,29 @@ export default function ReplayView({ visitorId, onClose }: Props) {
     pauseTimeRef.current = currentTime / speed
   }
 
-  const handleSeek = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const scaleX = canvas.width / rect.width
-    const scaledX = x * scaleX
-
-    const stripW = 40
-    const barX = stripW + 20
-    const barW = canvas.width - barX - 50
-    const pct = Math.max(0, Math.min(1, (scaledX - barX) / barW))
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     const newTime = pct * totalDuration
 
     setCurrentTime(newTime)
     pauseTimeRef.current = newTime / speed
     setPlaying(false)
 
-    mouseRef.current = { x: 0, y: 0 }
-    clicksRef.current = []
-    scrollRef.current = 0
-    scrollYRef.current = 0
-    keysRef.current = []
-    mouseTrailRef.current = []
-    sectionRef.current = 'sec-landing'
+    stateRef.current.mouseX = 0.5
+    stateRef.current.mouseY = 0.5
+    stateRef.current.scrollPct = 0
+    stateRef.current.clicks = []
+    stateRef.current.keys = []
+    if (overlayRef.current) overlayRef.current.innerHTML = ''
 
     processEventsUpTo(newTime)
-    drawFrame()
+    scrollIframe(stateRef.current.scrollPct)
+
+    if (cursorRef.current) {
+      cursorRef.current.style.left = `${stateRef.current.mouseX * 100}%`
+      cursorRef.current.style.top = `${stateRef.current.mouseY * 100}%`
+    }
   }
 
   const formatTime = (ms: number) => {
@@ -422,16 +208,32 @@ export default function ReplayView({ visitorId, onClose }: Props) {
       style={{ background: 'rgba(5,2,8,0.95)', backdropFilter: 'blur(12px)' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
+      <style>{`
+        @keyframes clickRipple {
+          0% { transform: scale(0.3); opacity: 0.8; }
+          100% { transform: scale(1.5); opacity: 0; }
+        }
+        @keyframes clickFade {
+          0% { opacity: 0.8; }
+          100% { opacity: 0; }
+        }
+        @keyframes keyFade {
+          0% { opacity: 0.8; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-10px); }
+        }
+      `}</style>
+
       <motion.div
         initial={{ scale: 0.9, y: 30 }}
         animate={{ scale: 1, y: 0 }}
-        className="w-full max-w-5xl rounded-2xl overflow-hidden"
+        className="w-full max-w-6xl rounded-2xl overflow-hidden flex flex-col"
         style={{
           background: 'linear-gradient(135deg, rgba(26,16,48,0.95), rgba(13,8,24,0.98))',
           border: '1px solid rgba(232,160,191,0.15)',
+          height: '85vh',
         }}
       >
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-6 py-3 shrink-0">
           <div>
             <h3 className="text-white/80 text-sm" style={{ fontFamily: 'var(--font-serif)' }}>
               Session Replay
@@ -442,23 +244,53 @@ export default function ReplayView({ visitorId, onClose }: Props) {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-white/30 text-sm">Loading replay...</div>
+          <div className="flex-1 flex items-center justify-center text-white/30 text-sm">Loading replay...</div>
         ) : events.length === 0 ? (
-          <div className="text-center py-20 text-white/30 text-sm">No replay data recorded for this session.</div>
+          <div className="flex-1 flex items-center justify-center text-white/30 text-sm">No replay data recorded for this session.</div>
         ) : (
           <>
-            <div className="px-6 pb-2">
-              <canvas
-                ref={canvasRef}
-                width={960}
-                height={540}
-                className="w-full rounded-lg cursor-pointer"
-                style={{ background: '#0a0612' }}
-                onClick={handleSeek}
+            <div className="flex-1 mx-4 mb-2 rounded-xl overflow-hidden relative" style={{ minHeight: 0 }}>
+              {playing && (
+                <div className="absolute top-2 left-2 z-30 px-2 py-0.5 rounded text-[10px] text-white/60 flex items-center gap-1.5"
+                  style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  REC
+                </div>
+              )}
+
+              <iframe
+                ref={iframeRef}
+                src="https://proposalfrontend.vercel.app"
+                className="w-full h-full border-0"
+                style={{ pointerEvents: 'none' }}
+                onLoad={() => setIframeReady(true)}
+                sandbox="allow-same-origin allow-scripts"
+                title="Proposal Replay"
               />
+
+              <div ref={overlayRef} className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+                <div
+                  ref={cursorRef}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: '50%', top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    transition: 'left 0.05s linear, top 0.05s linear',
+                    zIndex: 25,
+                  }}
+                >
+                  <div className="w-5 h-5 rounded-full" style={{
+                    background: 'radial-gradient(circle, rgba(232,160,191,0.4) 0%, transparent 70%)',
+                    filter: 'blur(2px)',
+                  }} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full" style={{ background: '#E8A0BF', boxShadow: '0 0 6px rgba(232,160,191,0.6)' }} />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="px-6 py-4 flex items-center gap-4">
+            <div className="px-4 pb-3 flex items-center gap-4 shrink-0">
               <button
                 onClick={playing ? handlePause : handlePlay}
                 className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-105"
@@ -470,24 +302,18 @@ export default function ReplayView({ visitorId, onClose }: Props) {
                 <span className="text-white/80 text-sm">{playing ? '⏸' : '▶'}</span>
               </button>
 
-              <div className="flex-1">
-                <input
-                  type="range"
-                  min={0}
-                  max={totalDuration}
-                  value={currentTime}
-                  onChange={(e) => {
-                    const t = Number(e.target.value)
-                    setCurrentTime(t)
-                    pauseTimeRef.current = t / speed
-                    setPlaying(false)
-                    mouseTrailRef.current = []
-                    processEventsUpTo(t)
-                    drawFrame()
-                  }}
-                  className="w-full h-1 rounded-full appearance-none cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.1)' }}
-                />
+              <div className="flex-1 relative h-6 flex items-center cursor-pointer" onClick={handleSeek}>
+                <div className="w-full h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.1)' }} />
+                <div className="absolute h-1 rounded-full" style={{
+                  width: totalDuration > 0 ? `${(currentTime / totalDuration) * 100}%` : '0%',
+                  background: 'linear-gradient(90deg, rgba(232,160,191,0.4), rgba(212,175,55,0.6))',
+                }} />
+                <div className="absolute w-3 h-3 rounded-full" style={{
+                  left: totalDuration > 0 ? `${(currentTime / totalDuration) * 100}%` : '0%',
+                  background: '#E8A0BF',
+                  boxShadow: '0 0 8px rgba(232,160,191,0.5)',
+                  transform: 'translateX(-50%)',
+                }} />
               </div>
 
               <span className="text-white/40 text-xs font-mono min-w-[80px]">

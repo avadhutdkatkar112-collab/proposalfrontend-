@@ -5,7 +5,7 @@ const FLUSH_INTERVAL = 2000
 const MOUSE_THROTTLE = 50
 
 interface ReplayEvent {
-  type: 'mouse' | 'click' | 'key' | 'scroll' | 'section'
+  type: 'mouse' | 'click' | 'key' | 'scroll' | 'section' | 'hash'
   data: Record<string, unknown>
   ts: number
 }
@@ -89,23 +89,20 @@ export function useSessionReplay() {
       const now = Date.now()
       if (now - lastMouse.current < MOUSE_THROTTLE) return
       lastMouse.current = now
-      const section = getVisibleSection()
       addEvent('mouse', {
-        x: e.clientX, y: e.clientY,
-        vw: window.innerWidth, vh: window.innerHeight,
-        scrollY: window.scrollY,
-        section,
+        x: e.clientX,
+        y: e.clientY,
+        vw: window.innerWidth,
+        vh: window.innerHeight,
       })
     }
 
     const handleClick = (e: MouseEvent) => {
-      const section = getVisibleSection()
       addEvent('click', {
-        x: e.clientX, y: e.clientY,
-        tag: (e.target as HTMLElement)?.tagName,
-        vw: window.innerWidth, vh: window.innerHeight,
-        scrollY: window.scrollY,
-        section,
+        x: e.clientX,
+        y: e.clientY,
+        vw: window.innerWidth,
+        vh: window.innerHeight,
       })
     }
 
@@ -115,6 +112,9 @@ export function useSessionReplay() {
     }
 
     const handleScroll = () => {
+      const scrollPct = document.documentElement.scrollHeight > window.innerHeight
+        ? window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)
+        : 0
       const section = getVisibleSection()
       if (section !== lastSection.current) {
         lastSection.current = section
@@ -122,7 +122,7 @@ export function useSessionReplay() {
       }
       addEvent('scroll', {
         scrollY: window.scrollY,
-        scrollX: window.scrollX,
+        scrollPct,
         docHeight: document.documentElement.scrollHeight,
         viewHeight: window.innerHeight,
         section,
