@@ -39,9 +39,18 @@ function App() {
   const [showDashboard, setShowDashboard] = useState(false)
 
   const { session, trackSection, trackResponse, resetSession } = useSessionTracker()
-  useSessionReplay()
+  const isReplayMode = new URLSearchParams(window.location.search).get('replay') === '1'
+  if (!isReplayMode) useSessionReplay()
 
   const handleLoad = useCallback(() => setLoaded(true), [])
+
+  // Auto-start in replay mode (iframe)
+  useEffect(() => {
+    if (isReplayMode) {
+      setLoaded(true)
+      setStarted(true)
+    }
+  }, [isReplayMode])
 
   const handleStart = useCallback(() => {
     setStarted(true)
@@ -145,7 +154,7 @@ function App() {
 
   return (
     <div className="relative" style={{ background: '#0d0818' }}>
-      <LoadingScreen onComplete={handleLoad} />
+      {!isReplayMode && <LoadingScreen onComplete={handleLoad} />}
 
       {loaded && (
         <>
