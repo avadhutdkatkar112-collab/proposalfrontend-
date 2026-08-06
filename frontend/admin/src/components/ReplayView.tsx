@@ -53,6 +53,7 @@ export default function ReplayView({ visitorId, onClose }: Props) {
   const timersRef = useRef<number[]>([])
   const speedRef = useRef(speed)
   const mountedRef = useRef(true)
+  const sectionRef = useRef('sec-landing')
 
   speedRef.current = speed
 
@@ -161,6 +162,7 @@ export default function ReplayView({ visitorId, onClose }: Props) {
         section = (ev.data.section as string) || section
       }
     }
+    sectionRef.current = section
     setCurrentSection(section)
     smoothRef.current = { mx: t.mx, my: t.my }
     eventIdxRef.current = endIdx
@@ -230,7 +232,7 @@ export default function ReplayView({ visitorId, onClose }: Props) {
       setCurrentTime(elapsed)
 
       const t = targetRef.current
-      let section = currentSection
+      let section = sectionRef.current
 
       const startIdx = eventIdxRef.current
       for (let i = startIdx; i < events.length; i++) {
@@ -266,7 +268,10 @@ export default function ReplayView({ visitorId, onClose }: Props) {
         if (i === events.length - 1) eventIdxRef.current = events.length
       }
 
-      if (section !== currentSection) setCurrentSection(section)
+      if (section !== sectionRef.current) {
+        sectionRef.current = section
+        setCurrentSection(section)
+      }
 
       const lerpRate = Math.min(1, dt * (speedRef.current >= 2 ? 18 : 12))
       smoothRef.current.mx += (t.mx - smoothRef.current.mx) * lerpRate
@@ -289,7 +294,7 @@ export default function ReplayView({ visitorId, onClose }: Props) {
       if (animRef.current) cancelAnimationFrame(animRef.current)
       animRef.current = null
     }
-  }, [playing, totalDuration, iframeReady, events, currentSection, scrollIframe, buildStateAt, spawnClickRipple, spawnKeyBadge, skipIdle])
+  }, [playing, totalDuration, iframeReady, events, scrollIframe, buildStateAt, spawnClickRipple, spawnKeyBadge, skipIdle])
 
   const resetState = useCallback((time: number) => {
     clearOverlay()
