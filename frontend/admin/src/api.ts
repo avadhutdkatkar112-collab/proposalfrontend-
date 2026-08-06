@@ -17,7 +17,7 @@ export function clearToken() {
   localStorage.removeItem('admin_token')
 }
 
-async function apiFetch(path: string, options: RequestInit = {}) {
+async function apiFetch(path: string, options: RequestInit = {}, redirectOn401 = true) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
@@ -31,7 +31,7 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 
   if (res.status === 401) {
     clearToken()
-    window.location.reload()
+    if (redirectOn401) window.location.reload()
     throw new Error('Unauthorized')
   }
 
@@ -49,7 +49,7 @@ export async function login(username: string, password: string) {
 
 export async function verifyToken() {
   try {
-    const res = await apiFetch('/api/auth/verify')
+    const res = await apiFetch('/api/auth/verify', {}, false)
     return res.valid
   } catch {
     return false
