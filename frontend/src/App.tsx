@@ -32,25 +32,18 @@ const sectionIds = [
 ]
 
 function App() {
-  const [loaded, setLoaded] = useState(false)
-  const [started, setStarted] = useState(false)
+  const isReplayMode = new URLSearchParams(window.location.search).get('replay') === '1'
+
+  const [loaded, setLoaded] = useState(isReplayMode)
+  const [started, setStarted] = useState(isReplayMode)
   const [choice, setChoice] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState(0)
   const [showDashboard, setShowDashboard] = useState(false)
 
   const { session, trackSection, trackResponse, resetSession } = useSessionTracker()
-  const isReplayMode = new URLSearchParams(window.location.search).get('replay') === '1'
   if (!isReplayMode) useSessionReplay()
 
   const handleLoad = useCallback(() => setLoaded(true), [])
-
-  // Auto-start in replay mode (iframe)
-  useEffect(() => {
-    if (isReplayMode) {
-      setLoaded(true)
-      setStarted(true)
-    }
-  }, [isReplayMode])
 
   const handleStart = useCallback(() => {
     setStarted(true)
