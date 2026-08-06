@@ -173,7 +173,7 @@ function App() {
                 </div>
                 {choice && (
                   <div id="sec-ending">
-                    <EndingSection choice={choice} />
+                    <EndingSection choice={choice} responses={session.responses} />
                   </div>
                 )}
               </>

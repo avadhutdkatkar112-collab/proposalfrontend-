@@ -75,6 +75,7 @@ router.delete('/:visitorId', authMiddleware, async (req: AuthRequest, res: Respo
         current_section = NULL,
         progress = 0,
         response = NULL,
+        responses = '[]'::jsonb,
         responded_at = NULL
        WHERE id = $1`,
       [sessionId]

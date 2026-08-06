@@ -41,3 +41,9 @@ CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_online ON sessions(is_online);
 CREATE INDEX IF NOT EXISTS idx_sessions_visitor ON sessions(visitor_id);
+
+-- Add responses JSONB column if not exists
+DO $$ BEGIN
+  ALTER TABLE sessions ADD COLUMN responses jsonb DEFAULT '[]'::jsonb;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;

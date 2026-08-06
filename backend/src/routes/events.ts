@@ -99,12 +99,16 @@ router.post('/', async (req, res: Response) => {
       )
     }
 
-    // If response event, update session response
+    // If response event, append to session responses array
     if (type === 'response' && label) {
       const responseText = label.replace('Response Submitted: ', '')
       await query(
-        `UPDATE sessions SET response = $1, responded_at = NOW() WHERE id = $2`,
-        [responseText, sessionId]
+        `UPDATE sessions SET
+          response = $1,
+          responses = COALESCE(responses, '[]'::jsonb) || $2::jsonb,
+          responded_at = NOW()
+         WHERE id = $3`,
+        [responseText, JSON.stringify([responseText]), sessionId]
       )
     }
 

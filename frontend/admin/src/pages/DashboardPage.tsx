@@ -9,6 +9,7 @@ interface Session {
   current_section: string | null
   progress: number
   response: string | null
+  responses: string[] | null
   responded_at: string | null
   ip_address: string | null
   ip_city: string | null
@@ -49,7 +50,7 @@ const allSections = [
 function getSectionStatus(session: Session, events: { section: string | null }[]) {
   const visitedSections = new Set(events.filter((e) => e.section).map((e) => e.section))
   const currentIdx = allSections.findIndex((s) => s.id === session.current_section)
-  const hasResponse = !!session.response
+  const hasResponse = !!(session.responses && session.responses.length > 0)
 
   return allSections.map((sec, i) => {
     const visited = visitedSections.has(sec.id)
@@ -193,6 +194,7 @@ export default function DashboardPage() {
 
   const onlineCount = sessions.filter((s) => s.is_online).length
   const respondedCount = sessions.filter((s) => s.response).length
+  const totalResponses = sessions.reduce((sum, s) => sum + ((s.responses?.length) || 0), 0)
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
@@ -208,6 +210,8 @@ export default function DashboardPage() {
             <span className="text-green-400/60">{onlineCount} online</span>
             <span>·</span>
             <span className="text-rose-300/50">{respondedCount} responded</span>
+            <span>·</span>
+            <span className="text-amber-300/50">{totalResponses} responses</span>
           </div>
         </div>
         <div className="flex gap-3">
@@ -349,7 +353,6 @@ export default function DashboardPage() {
                   { label: 'Duration', value: getDuration(selected.started_at, selected.last_active_at) },
                   { label: 'Started', value: formatTime(selected.started_at) },
                   { label: 'Last Active', value: formatTime(selected.last_active_at) },
-                  { label: 'Response', value: selected.response || '—' },
                 ].map((item) => (
                   <div key={item.label} className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.02)' }}>
                     <span className="text-white/25 text-[9px] tracking-wider uppercase block mb-1">{item.label}</span>
@@ -357,6 +360,29 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Responses */}
+              {selected.responses && selected.responses.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-white/30 text-[10px] tracking-wider uppercase mb-3">Responses ({selected.responses.length})</h3>
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div className="space-y-2">
+                      {selected.responses!.map((r, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <span className="text-white/15 text-[9px] font-mono whitespace-nowrap">#{i + 1}</span>
+                          <span className="text-lg">
+                            {r.includes('Love') ? '❤️' : r.includes('Know') ? '🌸' : r.includes('Feel') ? '🤍' : '💬'}
+                          </span>
+                          <span className="text-white/60 text-xs">{r}</span>
+                          {i === selected.responses!.length - 1 && (
+                            <span className="ml-auto text-amber-400/40 text-[9px]">latest</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Event Timeline */}
               <div>

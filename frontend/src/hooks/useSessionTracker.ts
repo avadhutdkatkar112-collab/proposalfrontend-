@@ -14,7 +14,7 @@ export interface SessionData {
   id: string
   startedAt: number
   events: SessionEvent[]
-  response: string | null
+  responses: string[]
   respondedAt: number | null
   currentSection: string
   progress: number
@@ -75,7 +75,7 @@ export function useSessionTracker() {
     id: visitorId.current,
     startedAt: Date.now(),
     events: [],
-    response: null,
+    responses: [],
     respondedAt: null,
     currentSection: 'sec-landing',
     progress: 0,
@@ -123,7 +123,7 @@ export function useSessionTracker() {
     (response: string) => {
       setSession((prev) => ({
         ...prev,
-        response,
+        responses: [...prev.responses, response],
         respondedAt: Date.now(),
         progress: 100,
         events: [
@@ -165,7 +165,7 @@ export function useSessionTracker() {
       id: newId,
       startedAt: Date.now(),
       events: [],
-      response: null,
+      responses: [],
       respondedAt: null,
       currentSection: 'sec-landing',
       progress: 0,

@@ -146,7 +146,7 @@ export default function Dashboard({
           </div>
 
           {/* Response (if submitted) */}
-          {session.response && (
+          {session.responses.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -157,17 +157,24 @@ export default function Dashboard({
               }}
             >
               <span className="text-white/30 text-[10px] tracking-wider uppercase block mb-2">
-                Response
+                Responses ({session.responses.length})
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">
-                  {session.response.includes('Love') ? '❤️' : session.response.includes('Know') ? '🌸' : '🤍'}
-                </span>
-                <span className="text-white/80 text-sm font-medium">{session.response}</span>
+              <div className="space-y-1.5">
+                {session.responses.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs">
+                      {r.includes('Love') ? '❤️' : r.includes('Know') ? '🌸' : '🤍'}
+                    </span>
+                    <span className="text-white/70 text-sm font-medium">{r}</span>
+                    {i === session.responses.length - 1 && (
+                      <span className="text-white/30 text-[10px] ml-auto">latest</span>
+                    )}
+                  </div>
+                ))}
               </div>
               {session.respondedAt && (
-                <span className="text-white/25 text-[10px] mt-1 block">
-                  {formatTime(session.respondedAt)}
+                <span className="text-white/25 text-[10px] mt-2 block">
+                  Last response at {formatTime(session.respondedAt)}
                 </span>
               )}
             </motion.div>

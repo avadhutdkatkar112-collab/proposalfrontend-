@@ -33,7 +33,7 @@ const defaultEnding = {
   confettiIntensity: 1,
 }
 
-export default function EndingSection({ choice }: { choice: string }) {
+export default function EndingSection({ choice, responses }: { choice: string; responses: string[] }) {
   const cleanupRef = useRef<(() => void) | null>(null)
   const ending = endings[choice] || defaultEnding
 
@@ -128,14 +128,49 @@ export default function EndingSection({ choice }: { choice: string }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full"
-          style={{
-            background: 'linear-gradient(135deg, rgba(232,160,191,0.1), rgba(212,175,55,0.1))',
-            border: '1px solid rgba(232,160,191,0.2)',
-          }}
+          className="inline-flex flex-col items-center gap-3"
         >
-          <span className="text-white/40 text-sm">Your response:</span>
-          <span className="text-white/70 text-sm font-medium">{choice}</span>
+          <div
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full"
+            style={{
+              background: 'linear-gradient(135deg, rgba(232,160,191,0.1), rgba(212,175,55,0.1))',
+              border: '1px solid rgba(232,160,191,0.2)',
+            }}
+          >
+            <span className="text-white/40 text-sm">Your response:</span>
+            <span className="text-white/70 text-sm font-medium">{choice}</span>
+          </div>
+
+          {responses.length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.5 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className="text-white/30 text-xs">All responses:</span>
+              <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                {responses.map((r, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 1.6 + i * 0.1 }}
+                    className="px-3 py-1 rounded-full text-xs"
+                    style={{
+                      background: i === responses.length - 1
+                        ? 'linear-gradient(135deg, rgba(232,160,191,0.25), rgba(212,175,55,0.2))'
+                        : 'rgba(255,255,255,0.05)',
+                      border: `1px solid ${i === responses.length - 1 ? 'rgba(232,160,191,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                      color: i === responses.length - 1 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)',
+                    }}
+                  >
+                    {r}
+                  </motion.span>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         <motion.p
