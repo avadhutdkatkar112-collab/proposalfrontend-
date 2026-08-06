@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getSessions, getSession, resetSession, connectSSE, clearToken } from '../api'
+import { getSessions, getSession, resetSession, resetAllSessions, connectSSE, clearToken } from '../api'
+import ReplayView from '../components/ReplayView'
 
 interface Session {
   id: string
@@ -100,6 +101,7 @@ export default function DashboardPage() {
   const [selected, setSelected] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [replayVisitorId, setReplayVisitorId] = useState<string | null>(null)
   const selectedRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -194,6 +196,13 @@ export default function DashboardPage() {
     setSelected(null)
   }
 
+  const handleResetAll = async () => {
+    if (!confirm('Archive and reset ALL sessions? This cannot be undone.')) return
+    await resetAllSessions()
+    setRefreshKey((k) => k + 1)
+    setSelected(null)
+  }
+
   const onlineCount = sessions.filter((s) => s.is_online).length
   const respondedCount = sessions.filter((s) => s.response).length
   const totalResponses = sessions.reduce((sum, s) => sum + ((s.responses?.length) || 0), 0)
@@ -220,6 +229,10 @@ export default function DashboardPage() {
           <button onClick={() => setRefreshKey((k) => k + 1)} className="px-4 py-2 rounded-lg text-xs cursor-pointer transition-all hover:scale-[1.02]"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
             Refresh
+          </button>
+          <button onClick={handleResetAll} className="px-4 py-2 rounded-lg text-xs cursor-pointer transition-all hover:scale-[1.02]"
+            style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.5)' }}>
+            Reset All
           </button>
           <button onClick={() => { clearToken(); window.location.reload() }} className="px-4 py-2 rounded-lg text-xs cursor-pointer transition-all hover:scale-[1.02]"
             style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.5)' }}>
@@ -304,6 +317,10 @@ export default function DashboardPage() {
                   <span className="text-white/20 text-[10px]">{selected.ip_address}</span>
                 </div>
                 <div className="flex gap-2">
+                  <button onClick={() => setReplayVisitorId(selected.visitor_id)} className="px-3 py-1.5 rounded-lg text-[10px] cursor-pointer transition-all hover:scale-[1.02]"
+                    style={{ background: 'rgba(232,160,191,0.08)', border: '1px solid rgba(232,160,191,0.15)', color: 'rgba(232,160,191,0.7)' }}>
+                    ▶ Replay
+                  </button>
                   <button onClick={() => handleReset(selected.visitor_id)} className="px-3 py-1.5 rounded-lg text-[10px] cursor-pointer transition-all hover:scale-[1.02]"
                     style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.5)' }}>
                     Reset
@@ -410,6 +427,12 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {replayVisitorId && (
+          <ReplayView visitorId={replayVisitorId} onClose={() => setReplayVisitorId(null)} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

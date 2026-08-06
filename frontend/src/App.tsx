@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useSessionTracker } from './hooks/useSessionTracker'
+import { useSessionReplay } from './hooks/useSessionReplay'
 import LoadingScreen from './components/ui/LoadingScreen'
 import CursorGlow from './components/ui/CursorGlow'
 import ParticleField from './components/ui/ParticleField'
@@ -38,6 +39,7 @@ function App() {
   const [showDashboard, setShowDashboard] = useState(false)
 
   const { session, trackSection, trackResponse, resetSession } = useSessionTracker()
+  useSessionReplay()
 
   const handleLoad = useCallback(() => setLoaded(true), [])
 

@@ -50,6 +50,37 @@ router.get('/:visitorId', authMiddleware, async (req: AuthRequest, res: Response
   }
 })
 
+// Reset/archive ALL sessions (admin)
+router.delete('/', authMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    // Archive all sessions
+    await query(
+      `UPDATE sessions SET 
+        visitor_id = visitor_id || '_archived_' || EXTRACT(EPOCH FROM NOW())::INTEGER,
+        is_online = false,
+        current_section = NULL,
+        progress = 0,
+        response = NULL,
+        responses = '[]'::jsonb,
+        responded_at = NULL
+       WHERE visitor_id NOT LIKE '%_archived_%'`
+    )
+
+    // Delete all events
+    await query('DELETE FROM events WHERE session_id IN (SELECT id FROM sessions)')
+
+    broadcast({
+      type: 'all_sessions_reset',
+      data: {},
+    })
+
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Reset all sessions error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Reset/archive session (admin)
 router.delete('/:visitorId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

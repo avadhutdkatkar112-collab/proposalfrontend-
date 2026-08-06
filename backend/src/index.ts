@@ -8,6 +8,7 @@ import { addSSEClient, broadcastSSE, getSSEClientCount, startPGListener } from '
 import eventsRouter from './routes/events'
 import sessionsRouter from './routes/sessions'
 import authRouter from './routes/auth'
+import replayRouter from './routes/replay'
 import { createServer } from 'http'
 
 dotenv.config()
@@ -39,6 +40,7 @@ app.use(cors({
 app.use(express.json())
 
 // API Routes
+app.use('/api/events/replay', replayRouter)
 app.use('/api/events', eventsRouter)
 app.use('/api/sessions', sessionsRouter)
 app.use('/api/auth', authRouter)

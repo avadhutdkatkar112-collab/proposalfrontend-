@@ -67,6 +67,14 @@ export async function resetSession(visitorId: string) {
   return apiFetch(`/api/sessions/${visitorId}`, { method: 'DELETE' })
 }
 
+export async function resetAllSessions() {
+  return apiFetch('/api/sessions', { method: 'DELETE' })
+}
+
+export async function getReplayEvents(visitorId: string) {
+  return apiFetch(`/api/events/replay/${visitorId}`)
+}
+
 let eventSource: EventSource | null = null
 
 export function connectSSE(handlers: {
