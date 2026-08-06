@@ -48,6 +48,7 @@ const sectionOrder = [
 ]
 
 async function postEvent(data: Record<string, unknown>) {
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('replay') === '1') return
   try {
     await fetch(`${API_URL}/api/events`, {
       method: 'POST',
@@ -60,7 +61,10 @@ async function postEvent(data: Record<string, unknown>) {
 }
 
 export function useSessionTracker() {
-  const visitorId = useRef(getVisitorId())
+  const isReplayMode = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('replay') === '1'
+
+  const visitorId = useRef(isReplayMode ? 'replay-viewer' : getVisitorId())
   const [session, setSession] = useState<SessionData>({
     id: visitorId.current,
     startedAt: Date.now(),

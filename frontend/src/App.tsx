@@ -132,6 +132,21 @@ function App() {
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
+  // Replay mode: signal parent when fully rendered and ready for scroll commands
+  useEffect(() => {
+    if (!isReplayMode) return
+    const sendReady = () => {
+      if (document.getElementById('sec-timeline') && window.parent) {
+        window.parent.postMessage({ type: 'replay-ready', height: document.documentElement.scrollHeight }, '*')
+      }
+    }
+    const t1 = setTimeout(sendReady, 500)
+    const t2 = setTimeout(sendReady, 1500)
+    const t3 = setTimeout(sendReady, 3000)
+    const t4 = setTimeout(sendReady, 6000)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4) }
+  }, [isReplayMode])
+
   const scrollTo = useCallback(
     (index: number) => {
       const ids = choice ? sectionIds : sectionIds.slice(0, -1)

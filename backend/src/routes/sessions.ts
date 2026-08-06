@@ -8,6 +8,12 @@ const router = Router()
 // Get all sessions (admin)
 router.get('/', authMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
+    // Mark sessions offline if no heartbeat in 30s (heartbeat interval is 15s)
+    await query(
+      `UPDATE sessions SET is_online = false
+       WHERE is_online = true AND last_active_at < NOW() - INTERVAL '30 seconds'`
+    )
+
     const result = await query(
       `SELECT s.*, 
         (SELECT COUNT(*) FROM events e WHERE e.session_id = s.id) as event_count
@@ -35,13 +41,25 @@ router.get('/:visitorId', authMiddleware, async (req: AuthRequest, res: Response
       return res.status(404).json({ error: 'Session not found' })
     }
 
+    const sessionId = sessionRes.rows[0].id
+
+    // Mark offline if no heartbeat in 30s
+    await query(
+      `UPDATE sessions SET is_online = false
+       WHERE id = $1 AND last_active_at < NOW() - INTERVAL '30 seconds'`,
+      [sessionId]
+    )
+
     const eventsRes = await query(
       'SELECT * FROM events WHERE session_id = $1 ORDER BY created_at ASC',
-      [sessionRes.rows[0].id]
+      [sessionId]
     )
 
     res.json({
       ...sessionRes.rows[0],
+      is_online: sessionRes.rows[0].last_active_at
+        ? Date.now() - new Date(sessionRes.rows[0].last_active_at).getTime() < 30000
+        : false,
       events: eventsRes.rows,
     })
   } catch (err) {

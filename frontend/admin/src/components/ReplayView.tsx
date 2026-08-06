@@ -91,6 +91,17 @@ export default function ReplayView({ visitorId, onClose }: Props) {
     return () => clearTimeout(t)
   }, [events.length, iframeReady])
 
+  // Listen for replay-ready handshake from iframe
+  useEffect(() => {
+    const handleMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'replay-ready') {
+        setIframeReady(true)
+      }
+    }
+    window.addEventListener('message', handleMsg)
+    return () => window.removeEventListener('message', handleMsg)
+  }, [])
+
   const sectionEvents = useMemo(() => events.filter((e) => e.type === 'section'), [events])
 
   // Event density heatmap: bucket events into 60 bins
@@ -136,7 +147,15 @@ export default function ReplayView({ visitorId, onClose }: Props) {
         t.my = (ev.data.y as number) / ((ev.data.vh as number) || 1080)
       }
       if (ev.type === 'scroll') {
-        t.scrollPct = (ev.data.scrollPct as number) || 0
+        const pct = ev.data.scrollPct as number
+        if (pct !== undefined && !Number.isNaN(pct)) {
+          t.scrollPct = pct
+        } else {
+          const sy = (ev.data.scrollY as number) || 0
+          const dh = (ev.data.docHeight as number) || 3000
+          const vh = (ev.data.viewHeight as number) || 800
+          t.scrollPct = dh > vh ? sy / (dh - vh) : 0
+        }
       }
       if (ev.type === 'section') {
         section = (ev.data.section as string) || section
@@ -225,7 +244,15 @@ export default function ReplayView({ visitorId, onClose }: Props) {
           t.mx = (ev.data.x as number) / ((ev.data.vw as number) || 1920)
           t.my = (ev.data.y as number) / ((ev.data.vh as number) || 1080)
         } else if (ev.type === 'scroll') {
-          t.scrollPct = (ev.data.scrollPct as number) || 0
+          const pct = ev.data.scrollPct as number
+          if (pct !== undefined && !Number.isNaN(pct)) {
+            t.scrollPct = pct
+          } else {
+            const sy = (ev.data.scrollY as number) || 0
+            const dh = (ev.data.docHeight as number) || 3000
+            const vh = (ev.data.viewHeight as number) || 800
+            t.scrollPct = dh > vh ? sy / (dh - vh) : 0
+          }
         } else if (ev.type === 'section') {
           section = (ev.data.section as string) || section
         } else if (ev.type === 'click') {
