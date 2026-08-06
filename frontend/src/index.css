@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #FFF8F0;
+  --color-cream-dark: #F5EDE3;
+  --color-blush: #FFE4E1;
+  --color-rose: #E8A0BF;
+  --color-rose-gold: #B76E79;
+  --color-lavender: #E6E6FA;
+  --color-lavender-dark: #C8A2C8;
+  --color-gold: #D4AF37;
+  --color-gold-light: #F0D060;
+  --color-pink-soft: #FFD1DC;
+  --color-pink-deep: #FF69B4;
+  --color-warm-white: #FFFAF5;
+
+  --font-serif: 'Playfair Display', 'Georgia', serif;
+  --font-sans: 'Inter', 'Segoe UI', sans-serif;
+  --font-handwriting: 'Dancing Script', cursive;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 2rem;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: #0d0818;
+    color: #fff;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--color-rose);
+    color: white;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0d0818;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #E8A0BF, #D4AF37);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #FFD1DC, #F0D060);
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #E8A0BF #0d0818;
+  }
+}
