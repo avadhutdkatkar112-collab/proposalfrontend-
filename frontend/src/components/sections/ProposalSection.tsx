@@ -177,7 +177,7 @@ export default function ProposalSection({ onSelect }: { onSelect: (choice: strin
                       border: '1px solid rgba(232,160,191,0.3)',
                     }}
                   >
-                    Send 💕
+                    Send
                   </motion.button>
                 </motion.div>
               )}

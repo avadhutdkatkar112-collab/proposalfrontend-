@@ -26,9 +26,16 @@ const endings: Record<string, { message: string; sub: string; hearts: number; co
   },
 }
 
+const defaultEnding = {
+  message: 'Thank you for sharing that with me.',
+  sub: "Your words mean more than you know. I'll remember this.",
+  hearts: 12,
+  confettiIntensity: 1,
+}
+
 export default function EndingSection({ choice }: { choice: string }) {
   const cleanupRef = useRef<(() => void) | null>(null)
-  const ending = endings[choice] || endings['Yes']
+  const ending = endings[choice] || defaultEnding
 
   useEffect(() => {
     if (ending.confettiIntensity <= 0) return
