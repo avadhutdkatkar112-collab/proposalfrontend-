@@ -4,6 +4,7 @@ import path from 'path'
 import dotenv from 'dotenv'
 import { pool } from './db'
 import { initWebSocket } from './ws'
+import { addSSEClient, broadcastSSE, getSSEClientCount, startPGListener } from './sse'
 import eventsRouter from './routes/events'
 import sessionsRouter from './routes/sessions'
 import authRouter from './routes/auth'
@@ -46,6 +47,12 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// SSE endpoint for admin real-time updates
+app.get('/api/events/stream', (req, res) => {
+  addSSEClient(res)
+  console.log(`SSE client connected (${getSSEClientCount()} total)`)
+})
+
 app.get('/', (_req, res) => {
   res.json({ 
     name: 'Proposal Backend API',
@@ -71,6 +78,8 @@ async function start() {
   try {
     await pool.query('SELECT NOW()')
     console.log('Database connected')
+
+    startPGListener(pool)
 
     server.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`)

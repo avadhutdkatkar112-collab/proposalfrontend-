@@ -1,5 +1,4 @@
 const API_URL = import.meta.env.VITE_API_URL || ''
-const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.host}/ws`
 
 let authToken: string | null = localStorage.getItem('admin_token')
 
@@ -68,43 +67,47 @@ export async function resetSession(visitorId: string) {
   return apiFetch(`/api/sessions/${visitorId}`, { method: 'DELETE' })
 }
 
-let wsInstance: WebSocket | null = null
-let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let eventSource: EventSource | null = null
 
-export function connectWebSocket(onMessage: (data: any) => void) {
-  const wsUrl = WS_URL.endsWith('/ws') ? WS_URL : `${WS_URL}/ws`
-  const ws = new WebSocket(wsUrl)
-  wsInstance = ws
+export function connectSSE(handlers: {
+  onSessionUpdated?: (data: any) => void
+  onEventCreated?: (data: any) => void
+  onOpen?: () => void
+  onError?: () => void
+}) {
+  if (eventSource) {
+    eventSource.close()
+  }
 
-  ws.onmessage = (event) => {
+  const url = `${API_URL}/api/events/stream`
+  eventSource = new EventSource(url)
+
+  eventSource.addEventListener('session.updated', (e) => {
     try {
-      const data = JSON.parse(event.data)
-      onMessage(data)
+      const data = JSON.parse(e.data)
+      handlers.onSessionUpdated?.(data)
     } catch {}
+  })
+
+  eventSource.addEventListener('event.created', (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      handlers.onEventCreated?.(data)
+    } catch {}
+  })
+
+  eventSource.onopen = () => {
+    handlers.onOpen?.()
   }
 
-  ws.onerror = () => {
-    ws.close()
-  }
-
-  ws.onclose = () => {
-    if (wsInstance === ws) {
-      wsReconnectTimer = setTimeout(() => {
-        if (wsInstance === ws) {
-          connectWebSocket(onMessage)
-        }
-      }, 3000)
-    }
+  eventSource.onerror = () => {
+    handlers.onError?.()
   }
 
   return {
     close: () => {
-      if (wsReconnectTimer) {
-        clearTimeout(wsReconnectTimer)
-        wsReconnectTimer = null
-      }
-      wsInstance = null
-      ws.close()
+      eventSource?.close()
+      eventSource = null
     },
   }
 }

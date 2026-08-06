@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getSessions, getSession, resetSession, connectWebSocket, clearToken } from '../api'
+import { getSessions, getSession, resetSession, connectSSE, clearToken } from '../api'
 
 interface Session {
   id: string
@@ -100,7 +100,6 @@ export default function DashboardPage() {
   const [selected, setSelected] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
-  const wsCleanupRef = useRef<(() => void) | null>(null)
   const selectedRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -122,80 +121,63 @@ export default function DashboardPage() {
     return () => { active = false }
   }, [refreshKey])
 
-  // Polling fallback — refresh sessions every 5s in case WebSocket fails
+  // SSE — real-time updates from PostgreSQL LISTEN/NOTIFY
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const data = await getSessions()
-        setSessions(data)
-      } catch {}
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    const ws = connectWebSocket((msg: any) => {
-      if (msg.type === 'new_event' || msg.type === 'heartbeat') {
+    const sse = connectSSE({
+      onSessionUpdated: (data) => {
         setSessions((prev) => {
-          const idx = prev.findIndex((s) => s.visitor_id === msg.data.visitorId)
+          const idx = prev.findIndex((s) => s.visitor_id === data.visitorId)
           if (idx >= 0) {
             const updated = [...prev]
-            updated[idx] = {
-              ...updated[idx],
-              is_online: true,
-              current_section: msg.data.currentSection || updated[idx].current_section,
-              progress: msg.data.progress ?? updated[idx].progress,
-              last_active_at: new Date().toISOString(),
-            }
+            updated[idx] = { ...updated[idx], ...data.session }
             return updated
           }
           setRefreshKey((k) => k + 1)
           return prev
         })
 
-        if (selectedRef.current === msg.data.visitorId && msg.data.event) {
+        if (selectedRef.current === data.visitorId) {
+          setSelected((prev) => prev ? { ...prev, ...data.session } : prev)
+        }
+      },
+      onEventCreated: (data) => {
+        if (selectedRef.current === data.visitorId && data.event) {
           setSelected((prev) => prev ? {
             ...prev,
-            current_section: msg.data.currentSection || prev.current_section,
-            progress: msg.data.progress ?? prev.progress,
             events: [...prev.events, {
               id: Date.now(),
-              type: msg.data.event.type,
-              label: msg.data.event.label,
-              section: msg.data.event.section,
-              progress: msg.data.event.progress,
+              type: data.event.type,
+              label: data.event.label,
+              section: data.event.section,
+              progress: data.event.progress,
               ip_address: null,
-              created_at: msg.data.event.createdAt,
+              created_at: data.event.created_at,
             }],
           } : prev)
         }
 
-        if (msg.data.event?.type === 'response') {
+        if (data.event?.type === 'response') {
           setRefreshKey((k) => k + 1)
         }
-      }
-
-      if (msg.type === 'visitor_offline') {
-        setSessions((prev) =>
-          prev.map((s) =>
-            s.visitor_id === msg.data.visitorId
-              ? { ...s, is_online: false }
-              : s
-          )
-        )
-        if (selectedRef.current === msg.data.visitorId) {
-          setSelected((prev) => prev ? { ...prev, is_online: false } : prev)
-        }
-      }
-
-      if (msg.type === 'session_reset') {
+      },
+      onOpen: () => {
         setRefreshKey((k) => k + 1)
-        if (selectedRef.current === msg.data.visitorId) setSelected(null)
-      }
+      },
+      onError: () => {},
     })
 
-    wsCleanupRef.current = ws.close
-    return () => ws.close()
+    return () => sse.close()
+  }, [])
+
+  // REST polling fallback — refresh every 10s for reliability
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const data = await getSessions()
+        setSessions(data)
+      } catch {}
+    }, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleViewDetail = async (visitorId: string) => {

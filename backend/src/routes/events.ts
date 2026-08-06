@@ -114,7 +114,7 @@ router.post('/', async (req, res: Response) => {
 
     // Broadcast to admin dashboard
     const existingGeo = existingSession.rows[0]
-    broadcast({
+    const broadcastData = {
       type: type === 'heartbeat' ? 'heartbeat' : 'new_event',
       data: {
         visitorId,
@@ -127,7 +127,9 @@ router.post('/', async (req, res: Response) => {
         city: geo.city || existingGeo?.ip_city,
         country: geo.country || existingGeo?.ip_country,
       },
-    })
+    }
+
+    broadcast(broadcastData)
 
     res.json({ ok: true, sessionId })
   } catch (err) {
