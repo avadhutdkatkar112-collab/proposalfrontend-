@@ -44,7 +44,7 @@ router.get('/:visitorId', async (req, res: Response) => {
     }
 
     const eventsRes = await query(
-      'SELECT type, data, ts FROM replay_events WHERE session_id = $1 ORDER BY ts ASC',
+      'SELECT type, data, ts::int AS ts FROM replay_events WHERE session_id = $1 ORDER BY ts ASC',
       [sessionRes.rows[0].id]
     )
 
