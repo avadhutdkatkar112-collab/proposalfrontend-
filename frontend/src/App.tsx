@@ -118,7 +118,9 @@ function App() {
       if (e.data?.type === 'replay-scroll' && typeof e.data.scrollPct === 'number') {
         const maxScroll = document.documentElement.scrollHeight - window.innerHeight
         if (maxScroll > 0) {
+          document.documentElement.style.scrollBehavior = 'auto'
           window.scrollTo(0, e.data.scrollPct * maxScroll)
+          document.documentElement.style.scrollBehavior = ''
         }
       }
       if (e.data?.type === 'replay-hash' && typeof e.data.hash === 'string') {

@@ -38,6 +38,8 @@ export default function ReplayView({ visitorId, onClose }: Props) {
   const [speed, setSpeed] = useState(1)
   const [iframeReady, setIframeReady] = useState(false)
   const [currentSection, setCurrentSection] = useState('sec-landing')
+  const [skipIdle, setSkipIdle] = useState(true)
+  const autoPlayedRef = useRef(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const animRef = useRef<number | null>(null)
   const startTimeRef = useRef(0)
@@ -80,7 +82,29 @@ export default function ReplayView({ visitorId, onClose }: Props) {
 
   const totalDuration = events.length > 0 ? events[events.length - 1].ts : 0
 
+  // Auto-play once events loaded AND iframe ready
+  useEffect(() => {
+    if (autoPlayedRef.current) return
+    if (events.length === 0 || !iframeReady) return
+    autoPlayedRef.current = true
+    const t = setTimeout(() => setPlaying(true), 300)
+    return () => clearTimeout(t)
+  }, [events.length, iframeReady])
+
   const sectionEvents = useMemo(() => events.filter((e) => e.type === 'section'), [events])
+
+  // Event density heatmap: bucket events into 60 bins
+  const heatmap = useMemo(() => {
+    if (events.length === 0 || totalDuration === 0) return []
+    const bins = 60
+    const counts = new Array(bins).fill(0)
+    for (const ev of events) {
+      const idx = Math.min(bins - 1, Math.floor((ev.ts / totalDuration) * bins))
+      counts[idx]++
+    }
+    const max = Math.max(1, ...counts)
+    return counts.map((c, i) => ({ x: (i / bins) * 100, h: (c / max) * 100 }))
+  }, [events, totalDuration])
 
   const scrollIframe = useCallback((pct: number) => {
     const iframe = iframeRef.current
@@ -163,7 +187,18 @@ export default function ReplayView({ visitorId, onClose }: Props) {
       const dt = lastFrameTimeRef.current > 0 ? (frameTime - lastFrameTimeRef.current) / 1000 : 0
       lastFrameTimeRef.current = frameTime
 
-      const elapsed = ((frameTime - startTimeRef.current) / 1000) * speedRef.current
+      let elapsed = ((frameTime - startTimeRef.current) / 1000) * speedRef.current
+
+      // Skip idle gaps: if next event is far away and we're not at a click/key, fast-forward
+      if (skipIdle && eventIdxRef.current < events.length) {
+        const nextEv = events[eventIdxRef.current]
+        const gap = nextEv.ts - elapsed
+        if (gap > 4000) {
+          const jumpTime = nextEv.ts - 100
+          startTimeRef.current = frameTime - (jumpTime / speedRef.current) * 1000
+          elapsed = jumpTime
+        }
+      }
 
       if (elapsed >= totalDuration) {
         setPlaying(false)
@@ -227,7 +262,7 @@ export default function ReplayView({ visitorId, onClose }: Props) {
       if (animRef.current) cancelAnimationFrame(animRef.current)
       animRef.current = null
     }
-  }, [playing, totalDuration, iframeReady, events, currentSection, scrollIframe, buildStateAt, spawnClickRipple, spawnKeyBadge])
+  }, [playing, totalDuration, iframeReady, events, currentSection, scrollIframe, buildStateAt, spawnClickRipple, spawnKeyBadge, skipIdle])
 
   const resetState = useCallback((time: number) => {
     clearOverlay()
@@ -412,6 +447,17 @@ export default function ReplayView({ visitorId, onClose }: Props) {
               <div className="relative h-8 flex items-center cursor-pointer mb-2 group" onClick={handleSeek}>
                 <div className="w-full h-[3px] rounded-full group-hover:h-[5px] transition-all" style={{ background: 'rgba(255,255,255,0.07)' }} />
 
+                {/* Event density heatmap */}
+                <div className="absolute inset-x-0 bottom-0 h-6 flex items-end pointer-events-none opacity-40">
+                  {heatmap.map((bin, i) => (
+                    <div key={i} className="flex-1 mx-[0.5px] rounded-sm" style={{
+                      height: `${Math.max(6, bin.h)}%`,
+                      background: 'linear-gradient(180deg, rgba(212,175,55,0.6), rgba(232,160,191,0.2))',
+                      opacity: 0.3 + (bin.h / 100) * 0.7,
+                    }} />
+                  ))}
+                </div>
+
                 {sectionEvents.map((ev, i) => {
                   const pct = totalDuration > 0 ? (ev.ts / totalDuration) * 100 : 0
                   return (
@@ -432,6 +478,30 @@ export default function ReplayView({ visitorId, onClose }: Props) {
                   background: '#E8A0BF', boxShadow: '0 0 10px rgba(232,160,191,0.6)', transform: 'translateX(-50%)',
                 }} />
               </div>
+
+              {/* Section quick-jump chips */}
+              {sectionEvents.length > 1 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {sectionEvents.map((ev, i) => {
+                    const label = SECTION_LABELS[ev.data.section as string] || (ev.data.section as string) || ''
+                    const active = currentSection === ev.data.section
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleRangeSeek(ev.ts)}
+                        className={`px-2 py-0.5 rounded-md text-[9px] cursor-pointer transition-all ${active ? 'scale-105' : 'hover:scale-105'}`}
+                        style={{
+                          background: active ? 'rgba(232,160,191,0.2)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${active ? 'rgba(232,160,191,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                          color: active ? 'rgba(232,160,191,0.8)' : 'rgba(255,255,255,0.35)',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
               <div className="flex items-center gap-4">
                 <button
@@ -458,6 +528,19 @@ export default function ReplayView({ visitorId, onClose }: Props) {
                 <span className="text-white/35 text-[11px] font-mono min-w-[75px] text-right shrink-0">
                   {formatTime(currentTime)} / {formatTime(totalDuration)}
                 </span>
+
+                <button
+                  onClick={() => setSkipIdle((v) => !v)}
+                  className={`px-2 py-1 rounded-md text-[9px] cursor-pointer transition-all shrink-0 ${skipIdle ? '' : 'opacity-50'}`}
+                  style={{
+                    background: skipIdle ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${skipIdle ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                    color: skipIdle ? 'rgba(212,175,55,0.6)' : 'rgba(255,255,255,0.3)',
+                  }}
+                  title="Skip idle gaps over 4s"
+                >
+                  ⚡ Skip idle
+                </button>
 
                 <select
                   value={speed}
